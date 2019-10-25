@@ -12,20 +12,22 @@ const fetchMyIP = (callback) => {
       return;
     } else {
       const data = JSON.parse(body);
-      
-      callback(error, data.ip);
+      const ip = data.ip
+  
+      callback(ip, error);
+     
     }
   });
 };
 
 const fetchCoordsByIP = (IP, callback) => {
-  request(`https://ipvigilante.com/json/${IP}`, (error, response, body) => {
+  request(`https://ipvigilante.com/${IP}`, (error, response, body) => {
     if (error) {
       callback(error, null);
       return;
     }
     if (response.statusCode !== 200) {
-      const msg = `Status Code ${response.statusCode} when fetching IP. Response: ${body}`;
+      const msg = `Status Code ${response.statusCode} when fetching geolocation. Response: ${body}`;
       callback(Error(msg), null);
       return;
     } else {
@@ -33,10 +35,44 @@ const fetchCoordsByIP = (IP, callback) => {
       const data = JSON.parse(body);
       loc.latitude = data.data.latitude;
       loc.longitude = data.data.longitude;
-      callback(error, loc);
+      // console.log(data)
+      callback(loc, error);
      
     }
   });
 };
 
-module.exports = { fetchMyIP, fetchCoordsByIP };
+const fetchISSFlyOverTimes = (coords, callback) => {
+  // console.log(coords)
+  request(`http://api.open-notify.org/iss-pass.json?lat=${coords.latitude}&lon=${coords.longitude}`, (error, message, body) => {
+    if (error) {
+      callback(error, null);
+      return;
+    }
+    if (message.statusCode !== 200) {
+      const msg = `Status Code ${message.statusCode} when fetching spacestation. Response: ${body}`;
+      callback(Error(msg), null);
+      return;
+    } else {
+      const data = JSON.parse(body);
+      // console.log(data)
+      let passes = data.response;
+      
+      callback(passes, error);
+     
+    }
+  });
+};
+
+const nextISSTimesForMyLocation = (callback) => {
+  fetchMyIP((IP, error) => {
+    fetchCoordsByIP(IP, (coords, error) => {
+      fetchISSFlyOverTimes(coords, (passes, error) => {
+        callback(passes, error)
+      })
+    })
+  })
+
+}
+
+module.exports = { nextISSTimesForMyLocation };
